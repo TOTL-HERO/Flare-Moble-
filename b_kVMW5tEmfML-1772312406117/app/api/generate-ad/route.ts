@@ -1,9 +1,10 @@
 import { type NextRequest, NextResponse } from "next/server"
 import * as fal from "@fal-ai/serverless-client"
-import { 
+import {
+  type AdGenerationRequest,
   type GeneratedAd,
-  platformDimensions, 
-  stylePrompts 
+  platformDimensions,
+  stylePrompts
 } from "@/lib/types"
 import { 
   adGenerationSchema, 

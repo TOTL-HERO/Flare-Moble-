@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import * as fal from "@fal-ai/serverless-client"
 import { type AdVariation, stylePrompts, type AdStyle } from "@/lib/types"
+import { checkRateLimit } from "@/lib/validation"
 
 // Configure fal client
 fal.config({
@@ -50,6 +51,22 @@ function buildVariationPrompt(
 
 export async function POST(request: NextRequest) {
   try {
+    const clientIP = request.headers.get("x-forwarded-for") || "anonymous"
+    const rateLimit = checkRateLimit(`generate-variations:${clientIP}`, 10, 60000)
+
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: "Rate limit exceeded. Please try again later." },
+        {
+          status: 429,
+          headers: {
+            "X-RateLimit-Remaining": "0",
+            "X-RateLimit-Reset": String(Math.ceil(rateLimit.resetIn / 1000)),
+          },
+        }
+      )
+    }
+
     const body: VariationRequest = await request.json()
     
     if (!body.originalPrompt || !body.parentAdId) {
