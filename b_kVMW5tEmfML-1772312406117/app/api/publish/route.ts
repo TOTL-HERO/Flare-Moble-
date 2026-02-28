@@ -6,7 +6,7 @@ type Platform = "instagram" | "facebook" | "google" | "tiktok" | "twitter" | "li
 
 interface PublishRequest {
   adId: string
-  campaignId: string
+  campaignId?: string
   platforms: Platform[]
   imageUrl: string
   headline?: string

@@ -186,8 +186,8 @@ export async function parseRequestBody<T>(
     const result = schema.safeParse(body)
     
     if (!result.success) {
-      const errorMessage = result.error.errors
-        .map(e => `${e.path.join(".")}: ${e.message}`)
+      const errorMessage = result.error.issues
+        .map((e) => `${e.path.join(".")}: ${e.message}`)
         .join(", ")
       return { success: false, error: errorMessage }
     }

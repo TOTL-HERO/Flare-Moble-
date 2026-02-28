@@ -621,7 +621,7 @@ function StatCard({
   label: string
   value: string
   change: string
-  icon: React.ComponentType<{ size?: number; className?: string }>
+  icon: React.ComponentType<{ size?: string | number; className?: string }>
 }) {
   const isPositive = change.startsWith("+")
   
@@ -652,7 +652,7 @@ function QuickActionCard({
 }: { 
   title: string
   description: string
-  icon: React.ComponentType<{ size?: number; className?: string }>
+  icon: React.ComponentType<{ size?: string | number; className?: string }>
   onClick?: () => void
 }) {
   return (
@@ -3404,7 +3404,7 @@ export default function FlareApp() {
       case "settings":
         return <SettingsView darkMode={darkMode} onDarkModeChange={setDarkMode} onLogout={handleLogout} />
       default:
-        return <DashboardView darkMode={darkMode} />
+        return <DashboardView onNavigateToCreate={() => setActiveTab("create")} onNavigateToCampaigns={() => setActiveTab("campaigns")} darkMode={darkMode} />
     }
   }
 
