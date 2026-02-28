@@ -135,8 +135,9 @@ export async function POST(request: NextRequest) {
       },
     })
     
-    // Extract image URL
-    const imageUrl = (result as { images?: { url: string }[] }).images?.[0]?.url
+    // Extract image URL — fal.subscribe returns { data: Output, requestId }
+    const output = (result as { data?: { images?: { url: string }[] } }).data
+    const imageUrl = output?.images?.[0]?.url
     
     if (!imageUrl) {
       throw new Error("No image generated")
