@@ -1,149 +1,172 @@
 import { type NextRequest, NextResponse } from "next/server"
 import * as fal from "@fal-ai/serverless-client"
+import Anthropic from "@anthropic-ai/sdk"
+import OpenAI from "openai"
 import {
   type AdGenerationRequest,
   type GeneratedAd,
   platformDimensions,
-  stylePrompts
 } from "@/lib/types"
-import { 
-  adGenerationSchema, 
-  parseRequestBody, 
-  checkRateLimit 
+import {
+  adGenerationSchema,
+  parseRequestBody,
+  checkRateLimit,
 } from "@/lib/validation"
 
-// Configure fal client
-fal.config({
-  credentials: process.env.FAL_KEY,
-})
+fal.config({ credentials: process.env.FAL_KEY })
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
-// Map format to fal image size
 function getImageSize(platform: string, format: string): string {
   const platformConfig = platformDimensions[platform as keyof typeof platformDimensions]
   if (!platformConfig) return "square_hd"
-  
   const dims = platformConfig[format as keyof typeof platformConfig]
   if (!dims) return "square_hd"
-  
   const ratio = dims.width / dims.height
   if (ratio > 1.2) return "landscape_16_9"
   if (ratio < 0.8) return "portrait_16_9"
   return "square_hd"
 }
 
-// Build enhanced prompt for ad generation
-function buildAdPrompt(request: AdGenerationRequest): string {
-  const parts: string[] = []
-  
-  // Base prompt
-  parts.push(`Professional advertisement image: ${request.prompt}`)
-  
-  // Add brand context
-  if (request.brandName) {
-    parts.push(`for brand "${request.brandName}"`)
-  }
-  
-  // Add style
-  const styleDescription = stylePrompts[request.style || "professional"]
-  parts.push(styleDescription)
-  
-  // Add platform-specific optimizations
-  const platformHints: Record<string, string> = {
-    instagram: "Instagram-optimized, visually stunning, scroll-stopping",
-    facebook: "Facebook ad style, engaging, shareable",
-    google: "Google Display ad, clear messaging, high contrast",
-    tiktok: "TikTok style, trendy, youthful, dynamic",
-    twitter: "Twitter ad format, concise, impactful",
-    linkedin: "LinkedIn professional ad, business-focused, credible",
-  }
-  parts.push(platformHints[request.platform] || "")
-  
-  // Add text overlay instructions if needed
-  if (request.includeText && request.headline) {
-    parts.push(`featuring headline text: "${request.headline}"`)
-  }
-  if (request.cta) {
-    parts.push(`with call-to-action: "${request.cta}"`)
-  }
-  
-  // Add brand colors if provided
-  if (request.brandColors && request.brandColors.length > 0) {
-    parts.push(`using brand colors: ${request.brandColors.join(", ")}`)
-  }
-  
-  // Add language context
-  if (request.language !== "en") {
-    const languageNames: Record<string, string> = {
-      es: "Spanish",
-      fr: "French",
-      de: "German",
-      pt: "Portuguese",
-    }
-    parts.push(`text in ${languageNames[request.language] || request.language}`)
-  }
-  
-  // Quality boosters
-  parts.push("high quality, professional photography, commercial advertisement, 8k resolution")
-  
-  return parts.filter(Boolean).join(", ")
+const platformContext: Record<string, string> = {
+  instagram: "Instagram feed — thumb-stopping scroll, high aesthetic quality, lifestyle-focused",
+  facebook: "Facebook ad — trustworthy, clear value proposition, broad audience appeal",
+  google: "Google Display — high contrast, clean background, text-readable at small sizes",
+  tiktok: "TikTok — bold, energetic, Gen-Z appeal, vibrant and dynamic",
+  twitter: "Twitter/X card — punchy, direct, impactful single image",
+  linkedin: "LinkedIn — professional, polished, corporate credibility",
+}
+
+const formatContext: Record<string, string> = {
+  square: "1:1 square, balanced centered composition",
+  story: "9:16 vertical full-bleed, subject in upper 2/3, clear space at bottom for text overlay",
+  landscape: "16:9 horizontal, wide cinematic composition, subject on left or right third",
+  portrait: "4:5 portrait, product or subject centered, slightly compressed vertical frame",
+}
+
+// Claude generates the photorealistic visual blueprint
+async function buildVisualPromptWithClaude(body: AdGenerationRequest): Promise<string> {
+  const msg = await anthropic.messages.create({
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 450,
+    messages: [
+      {
+        role: "user",
+        content: `You are a world-class advertising creative director and AI image prompt engineer.
+Create a highly detailed, photorealistic image generation prompt for this advertisement:
+
+Product/Service: ${body.prompt}
+Brand: ${body.brandName || "premium brand"}
+Platform: ${body.platform} (${platformContext[body.platform] || ""})
+Format: ${body.format} (${formatContext[body.format] || ""})
+Visual style: ${body.style || "professional"}
+${body.headline ? `Headline: "${body.headline}"` : ""}
+${body.cta ? `CTA: "${body.cta}"` : ""}
+${body.brandColors?.length ? `Brand colors: ${body.brandColors.join(", ")}` : ""}
+
+Write a single photorealistic image generation prompt (150–220 words). Specify:
+- Camera setup (lens mm, aperture, e.g. "shot on 85mm f/1.8")
+- Lighting (e.g. "golden hour rim lighting", "studio three-point softbox")
+- Environment and background
+- Composition and depth of field
+- Color grading and mood
+- Material textures and surface details
+- How the product/subject is presented
+
+Make it commercial-grade and photorealistic — like a professional advertising photograph, not an illustration.
+Return ONLY the prompt. No preamble, no explanation.`,
+      },
+    ],
+  })
+  return msg.content[0].type === "text" ? msg.content[0].text.trim() : body.prompt
+}
+
+// OpenAI cross-references and adds commercial impact layers
+async function refineWithOpenAI(body: AdGenerationRequest, claudePrompt: string): Promise<string> {
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    max_tokens: 400,
+    messages: [
+      {
+        role: "system",
+        content:
+          "You are a senior visual advertising strategist who refines AI image prompts. " +
+          "Your job: take an existing photorealistic ad prompt and improve it by adding any missing " +
+          "commercial impact details — brand atmosphere, emotional tone, visual storytelling, " +
+          "audience connection, and platform-specific visual best practices. " +
+          "Output ONLY the improved prompt. Do not explain or add preamble.",
+      },
+      {
+        role: "user",
+        content: `Refine this ${body.platform} (${body.format}) ad image prompt to maximize photorealism and commercial impact:
+
+"${claudePrompt}"
+
+Cross-reference best practices for ${body.platform} advertising. Add:
+- Any missing emotional storytelling cues for the target audience
+- Specific photorealistic texture and surface detail descriptors
+- Atmosphere and mood reinforcement matching "${body.style || "professional"}" style
+- Platform-optimized composition notes for ${body.format} format
+
+Keep it as a single flowing prompt under 280 words. Return ONLY the refined prompt.`,
+      },
+    ],
+  })
+  return completion.choices[0]?.message?.content?.trim() || claudePrompt
 }
 
 export async function POST(request: NextRequest) {
   try {
-    // Rate limiting - use IP or a user identifier
     const clientIP = request.headers.get("x-forwarded-for") || "anonymous"
-    const rateLimit = checkRateLimit(`generate-ad:${clientIP}`, 20, 60000) // 20 requests per minute
-    
+    const rateLimit = checkRateLimit(`generate-ad:${clientIP}`, 20, 60000)
+
     if (!rateLimit.allowed) {
       return NextResponse.json(
         { error: "Rate limit exceeded. Please try again later." },
-        { 
+        {
           status: 429,
           headers: {
             "X-RateLimit-Remaining": "0",
             "X-RateLimit-Reset": String(Math.ceil(rateLimit.resetIn / 1000)),
-          }
+          },
         }
       )
     }
-    
-    // Validate and sanitize request body
+
     const parseResult = await parseRequestBody(request, adGenerationSchema, 50000)
-    
     if (!parseResult.success) {
-      return NextResponse.json(
-        { error: parseResult.error },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: parseResult.error }, { status: 400 })
     }
-    
+
     const body = parseResult.data
-    
-    // Build enhanced prompt
-    const enhancedPrompt = buildAdPrompt(body)
-    
-    // Get appropriate image size
+
+    // Step 1: Claude builds the photorealistic visual blueprint
+    const claudePrompt = await buildVisualPromptWithClaude(body)
+
+    // Step 2: OpenAI cross-references and refines for commercial impact
+    const finalPrompt = await refineWithOpenAI(body, claudePrompt)
+
+    // Step 3: FLUX.1 Dev — photorealistic image generation
     const imageSize = getImageSize(body.platform, body.format)
-    
-    // Generate image using fal
-    const result = await fal.subscribe("fal-ai/flux/schnell", {
+    const result = await fal.subscribe("fal-ai/flux/dev", {
       input: {
-        prompt: enhancedPrompt,
+        prompt: finalPrompt,
         image_size: imageSize,
-        num_inference_steps: 4,
+        num_inference_steps: 28,
+        guidance_scale: 3.5,
         num_images: 1,
+        enable_safety_checker: true,
       },
     })
-    
-    // Extract image URL — fal.subscribe returns { data: Output, requestId }
+
+    // fal.subscribe returns { data: Output, requestId }
     const output = (result as { data?: { images?: { url: string }[] } }).data
     const imageUrl = output?.images?.[0]?.url
-    
+
     if (!imageUrl) {
       throw new Error("No image generated")
     }
-    
-    // Create ad object
+
     const generatedAd: GeneratedAd = {
       id: `ad_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       imageUrl,
@@ -156,17 +179,10 @@ export async function POST(request: NextRequest) {
       createdAt: new Date(),
       language: body.language,
     }
-    
-    return NextResponse.json({ 
-      success: true, 
-      ad: generatedAd 
-    })
-    
+
+    return NextResponse.json({ success: true, ad: generatedAd })
   } catch (error) {
     console.error("Error generating ad:", error)
-    return NextResponse.json(
-      { error: "Failed to generate ad" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: "Failed to generate ad" }, { status: 500 })
   }
 }

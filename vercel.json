@@ -4,7 +4,7 @@
   "installCommand": "pnpm install",
   "functions": {
     "app/api/generate-ad/route.ts": {
-      "maxDuration": 60
+      "maxDuration": 120
     },
     "app/api/generate-variations/route.ts": {
       "maxDuration": 60
