@@ -1,0 +1,364 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg: #f5f0e8;
+  --bg-card: #ffffff;
+  --bg-muted: #f0ece6;
+  --border: #e8e2da;
+  --border-strong: #d4ccc0;
+  --primary: #9B7EC8;
+  --primary-dark: #8A6DB8;
+  --primary-light: #C4A8E8;
+  --primary-glow: rgba(155, 126, 200, 0.25);
+  --text: #2C2420;
+  --text-2: #6B5D54;
+  --text-3: #9C8D84;
+  --success: #5C9A6E;
+  --warning: #B8924A;
+  --error: #B85C5C;
+  --info: #5C7A9A;
+  --radius-sm: 10px;
+  --radius: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --tab-bar-height: 83px;
+  --user-bubble: #ebe4db;
+  
+  /* shadcn CSS variables */
+  --background: 35 33% 94%;
+  --foreground: 20 16% 15%;
+  --card: 0 0% 100%;
+  --card-foreground: 20 16% 15%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 20 16% 15%;
+  --primary: 20 48% 43%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 30 14% 91%;
+  --secondary-foreground: 20 16% 15%;
+  --muted: 30 14% 91%;
+  --muted-foreground: 20 14% 40%;
+  --accent: 30 14% 91%;
+  --accent-foreground: 20 16% 15%;
+  --destructive: 0 35% 54%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 30 14% 88%;
+  --input: 30 14% 88%;
+  --ring: 20 48% 43%;
+}
+
+html,
+body {
+  height: 100%;
+  min-height: 100dvh;
+}
+
+body {
+  font-family: var(--font-dm-sans), "DM Sans", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 99px;
+}
+
+::selection {
+  background: var(--primary-glow);
+  color: var(--primary);
+}
+
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+}
+
+a,
+button {
+  -webkit-touch-callout: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.safe-left {
+  padding-left: env(safe-area-inset-left);
+}
+.safe-right {
+  padding-right: env(safe-area-inset-right);
+}
+
+.page-content {
+  padding-bottom: calc(var(--tab-bar-height) + env(safe-area-inset-bottom));
+}
+
+.gradient-primary {
+  background: linear-gradient(135deg, #C4A8E8 0%, #9B7EC8 50%, #7B5EA8 100%);
+}
+
+.glow-primary {
+  box-shadow: 0 0 30px rgba(155, 126, 200, 0.25);
+}
+
+.glass {
+  background: rgba(24, 24, 27, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+@keyframes pulse-primary {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+.animate-pulse-primary {
+  animation: pulse-primary 2s ease-in-out infinite;
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+.animate-slide-up {
+  animation: slide-up 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+.card-tap {
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+textarea {
+  transition: height 0.1s ease;
+}
+
+@keyframes orbit-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes orbit-mid {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+@keyframes orbit-fast {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 0.85;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+}
+
+@keyframes float-gentle {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes float-gentle-alt {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes dot-breathe {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes pulse-opacity {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-in {
+  animation-duration: 300ms;
+  animation-fill-mode: forwards;
+}
+
+.fade-in {
+  animation-name: fade-in;
+}
+
+.duration-300 {
+  animation-duration: 300ms;
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+@keyframes pulse-slow {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.85;
+  }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 3s ease-in-out infinite;
+}
+
+@keyframes slide-in-from-bottom-4 {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.slide-in-from-bottom-4 {
+  animation-name: slide-in-from-bottom-4;
+  animation-duration: 400ms;
+  animation-timing-function: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-scale-in {
+  animation: scale-in 300ms ease-out forwards;
+}
+
+/* Hide scrollbar but keep functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes slide-in-from-bottom-2 {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.slide-in-from-bottom-2 {
+  animation-name: slide-in-from-bottom-2;
+  animation-duration: 200ms;
+  animation-timing-function: ease-out;
+}
