@@ -13,9 +13,7 @@ import {
   checkRateLimit,
 } from "@/lib/validation"
 
-fal.config({ credentials: process.env.FAL_KEY })
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+// Clients are initialized lazily inside POST after env-var guards run
 
 function getImageSize(platform: string, format: string): string {
   const platformConfig = platformDimensions[platform as keyof typeof platformDimensions]
@@ -45,7 +43,7 @@ const formatContext: Record<string, string> = {
 }
 
 // Claude generates the photorealistic visual blueprint
-async function buildVisualPromptWithClaude(body: AdGenerationRequest): Promise<string> {
+async function buildVisualPromptWithClaude(body: AdGenerationRequest, anthropic: Anthropic): Promise<string> {
   const msg = await anthropic.messages.create({
     model: "claude-haiku-4-5-20251001",
     max_tokens: 450,
@@ -82,7 +80,7 @@ Return ONLY the prompt. No preamble, no explanation.`,
 }
 
 // OpenAI cross-references and adds commercial impact layers
-async function refineWithOpenAI(body: AdGenerationRequest, claudePrompt: string): Promise<string> {
+async function refineWithOpenAI(body: AdGenerationRequest, claudePrompt: string, openai: OpenAI): Promise<string> {
   const completion = await openai.chat.completions.create({
     model: "gpt-4o-mini",
     max_tokens: 400,
@@ -144,6 +142,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "OPENAI_API_KEY environment variable is not set" }, { status: 500 })
     }
 
+    // Initialize clients here, after env-var guards, to avoid build-time errors
+    fal.config({ credentials: process.env.FAL_KEY })
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+
     const parseResult = await parseRequestBody(request, adGenerationSchema, 50000)
     if (!parseResult.success) {
       return NextResponse.json({ error: parseResult.error }, { status: 400 })
@@ -152,10 +155,10 @@ export async function POST(request: NextRequest) {
     const body = parseResult.data
 
     // Step 1: Claude builds the photorealistic visual blueprint
-    const claudePrompt = await buildVisualPromptWithClaude(body)
+    const claudePrompt = await buildVisualPromptWithClaude(body, anthropic)
 
     // Step 2: OpenAI cross-references and refines for commercial impact
-    const finalPrompt = await refineWithOpenAI(body, claudePrompt)
+    const finalPrompt = await refineWithOpenAI(body, claudePrompt, openai)
 
     // Step 3: FLUX.1 Dev — photorealistic image generation
     const imageSize = getImageSize(body.platform, body.format)
