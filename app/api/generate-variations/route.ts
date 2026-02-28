@@ -100,9 +100,8 @@ export async function POST(request: NextRequest) {
         },
       })
       
-      // fal.subscribe returns { data: Output, requestId }
-      const output = (result as { data?: { images?: { url: string }[] } }).data
-      const imageUrl = output?.images?.[0]?.url
+      // fal.subscribe returns the raw JSON body directly (no wrapper)
+      const imageUrl = (result as { images?: { url: string }[] }).images?.[0]?.url
       
       if (imageUrl) {
         return {

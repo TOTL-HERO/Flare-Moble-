@@ -907,7 +907,7 @@ function CreateView({ darkMode = false }: { darkMode?: boolean }) {
   const greeting = getGreeting()
   
   // AI Generation states
-  const [step, setStep] = useState<"prompt" | "options" | "generating" | "result">("prompt")
+  const [step, setStep] = useState<"prompt" | "options" | "generating" | "result" | "preview">("prompt")
   const [selectedPlatform, setSelectedPlatform] = useState<UIAdPlatform>("instagram")
   const [selectedFormat, setSelectedFormat] = useState<UIAdFormat>("square")
   const [selectedStyle, setSelectedStyle] = useState<UIAdStyle>("professional")
@@ -918,6 +918,7 @@ function CreateView({ darkMode = false }: { darkMode?: boolean }) {
   const [generatedAd, setGeneratedAd] = useState<UIGeneratedAd | null>(null)
   const [generationError, setGenerationError] = useState<string | null>(null)
   const [variations, setVariations] = useState<UIGeneratedAd[]>([])
+  const [previewPlatform, setPreviewPlatform] = useState<UIAdPlatform>("instagram")
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -1040,6 +1041,11 @@ function CreateView({ darkMode = false }: { darkMode?: boolean }) {
     setHeadline("")
     setCta("")
     setBrandName("")
+  }
+
+  const handleOpenPreview = (platform: UIAdPlatform) => {
+    setPreviewPlatform(platform)
+    setStep("preview")
   }
 
   const platforms: { id: UIAdPlatform; name: string; icon: string }[] = [
@@ -1189,14 +1195,16 @@ function CreateView({ darkMode = false }: { darkMode?: boolean }) {
             </div>
           )}
 
-          {/* Platform export options */}
+          {/* Platform preview & publish */}
           <div className="mt-6">
-            <h3 className="font-semibold text-[#2C2420] mb-3">Export to Platform</h3>
+            <h3 className="font-semibold text-[#2C2420] mb-1">Preview & Publish</h3>
+            <p className="text-xs text-[#9C8D84] mb-3">See how your ad looks on each platform before publishing</p>
             <div className="grid grid-cols-4 gap-2">
               {platforms.map((p) => (
                 <button
                   key={p.id}
-                  className="flex flex-col items-center gap-1 p-3 bg-white border border-[#e8e2da] rounded-xl hover:border-[#9B7EC8] transition-colors"
+                  onClick={() => handleOpenPreview(p.id)}
+                  className="flex flex-col items-center gap-1 p-3 bg-white border border-[#e8e2da] rounded-xl active:scale-95 transition-all hover:border-[#9B7EC8] hover:shadow-sm"
                 >
                   <span className="text-lg font-bold text-[#9B7EC8]">{p.icon}</span>
                   <span className="text-xs text-[#6B5D54]">{p.name}</span>
@@ -1204,6 +1212,228 @@ function CreateView({ darkMode = false }: { darkMode?: boolean }) {
               ))}
             </div>
           </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Render preview state
+  if (step === "preview" && generatedAd) {
+    const platformLabels: Record<UIAdPlatform, string> = {
+      instagram: "Instagram",
+      facebook: "Facebook",
+      google: "Google Display",
+      tiktok: "TikTok",
+    }
+    return (
+      <div className="flex flex-col h-[calc(100vh-180px)] animate-in fade-in duration-300">
+        {/* Header */}
+        <div className="flex items-center justify-between px-2 py-3 bg-[#f5f0e8]">
+          <button
+            onClick={() => setStep("result")}
+            className="flex items-center gap-2 px-3 py-2 text-[#6B5D54] hover:text-[#2C2420] transition-colors"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <path d="M19 12H5M12 19l-7-7 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <span className="text-sm font-medium">Back</span>
+          </button>
+          <span className="text-sm font-semibold text-[#2C2420]">Ad Preview</span>
+          <div className="w-16" />
+        </div>
+
+        {/* Platform tabs */}
+        <div className="flex gap-2 px-4 py-2 overflow-x-auto scrollbar-hide">
+          {platforms.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => setPreviewPlatform(p.id)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
+                previewPlatform === p.id
+                  ? "bg-[#9B7EC8] text-white"
+                  : "bg-white border border-[#e8e2da] text-[#6B5D54]"
+              }`}
+            >
+              {p.name}
+            </button>
+          ))}
+        </div>
+
+        {/* Platform mockup */}
+        <div className="flex-1 overflow-y-auto px-4 py-2 pb-6">
+
+          {/* Instagram mockup */}
+          {previewPlatform === "instagram" && (
+            <div className="bg-white rounded-2xl border border-[#e8e2da] overflow-hidden shadow-sm">
+              <div className="flex items-center justify-between px-3 py-2.5">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600 p-[2px] flex-shrink-0">
+                    <div className="w-full h-full rounded-full bg-gradient-to-tr from-orange-400 to-pink-500" />
+                  </div>
+                  <div>
+                    <p className="text-[12px] font-semibold leading-none">{brandName || "yourbrand"}</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">Sponsored</p>
+                  </div>
+                </div>
+                <span className="text-gray-400 font-bold tracking-widest text-xs">···</span>
+              </div>
+              <div className="aspect-square">
+                <img src={generatedAd.imageUrl} alt="Ad preview" className="w-full h-full object-cover" />
+              </div>
+              <div className="px-3 py-2.5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3.5">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" stroke="#2C2420" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="#2C2420" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" stroke="#2C2420" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </div>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" stroke="#2C2420" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                </div>
+                <p className="text-[12px] font-semibold text-[#2C2420]">1,284 likes</p>
+                {headline && (
+                  <p className="text-[12px] text-[#2C2420]">
+                    <span className="font-semibold">{brandName || "yourbrand"}</span>{" "}{headline}
+                  </p>
+                )}
+                {cta && (
+                  <button className="w-full mt-1 py-2 bg-[#405DE6] text-white text-[12px] font-semibold rounded-md">
+                    {cta}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Facebook mockup */}
+          {previewPlatform === "facebook" && (
+            <div className="bg-white rounded-2xl border border-[#e8e2da] overflow-hidden shadow-sm">
+              <div className="px-3 py-2.5">
+                <div className="flex items-center gap-2">
+                  <div className="w-9 h-9 rounded-full bg-[#1877F2] flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                    {(brandName || "Y").charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[12px] font-semibold text-[#050505] truncate">{brandName || "Your Brand Page"}</p>
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] text-gray-500">Sponsored</span>
+                      <span className="text-gray-400 text-[10px]">·</span>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className="text-gray-500"><circle cx="12" cy="12" r="10"/></svg>
+                    </div>
+                  </div>
+                  <span className="text-gray-400 font-bold tracking-widest text-xs">···</span>
+                </div>
+                {headline && <p className="mt-2 text-[13px] text-[#050505]">{headline}</p>}
+              </div>
+              <div className="aspect-video">
+                <img src={generatedAd.imageUrl} alt="Ad preview" className="w-full h-full object-cover" />
+              </div>
+              <div className="px-3 py-2.5 bg-[#F0F2F5]">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[11px] font-semibold text-[#050505] uppercase tracking-wide">{brandName?.toUpperCase() || "YOURBRAND.COM"}</p>
+                  {cta && (
+                    <button className="px-3 py-1.5 bg-[#E7E9EB] text-[#050505] text-[12px] font-semibold rounded-md">
+                      {cta}
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center justify-between pt-2 border-t border-gray-300">
+                  <div className="flex items-center gap-1">
+                    <span className="text-base">👍❤️😆</span>
+                    <span className="text-[11px] text-gray-600 ml-1">847</span>
+                  </div>
+                  <div className="flex gap-3">
+                    <span className="text-[11px] text-gray-500">64 comments</span>
+                    <span className="text-[11px] text-gray-500">19 shares</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Google Display mockup */}
+          {previewPlatform === "google" && (
+            <div className="bg-white rounded-2xl border border-[#e8e2da] overflow-hidden shadow-sm">
+              <div className="bg-gray-50 px-3 py-1.5 border-b border-gray-200 flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[9px] text-gray-500 border border-gray-400 rounded px-1 py-0.5 font-medium">Ad</span>
+                  <span className="text-[10px] text-gray-500">·</span>
+                  <span className="text-[10px] text-[#006621]">{(brandName || "yourbrand").toLowerCase().replace(/\s/g, "")}.com</span>
+                </div>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="#9AA0A6" strokeWidth="2" strokeLinecap="round"/></svg>
+              </div>
+              <div className="aspect-video">
+                <img src={generatedAd.imageUrl} alt="Ad preview" className="w-full h-full object-cover" />
+              </div>
+              <div className="px-4 py-3">
+                {headline && <p className="text-[15px] font-medium text-[#1A0DAB] leading-snug">{headline}</p>}
+                <p className="text-[11px] text-[#006621] mt-0.5">{(brandName || "yourbrand").toLowerCase().replace(/\s/g, "")}.com</p>
+                {cta && (
+                  <button className="mt-3 px-5 py-2 bg-[#1A73E8] text-white text-[13px] font-medium rounded-full">
+                    {cta}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* TikTok mockup */}
+          {previewPlatform === "tiktok" && (
+            <div className="bg-black rounded-2xl overflow-hidden shadow-sm">
+              <div className="aspect-[9/16] relative">
+                <img src={generatedAd.imageUrl} alt="Ad preview" className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20 pointer-events-none" />
+                {/* Top nav */}
+                <div className="absolute top-3 left-0 right-0 flex items-center justify-center gap-6">
+                  <span className="text-white/60 text-[13px] font-medium">Following</span>
+                  <span className="text-white text-[13px] font-semibold border-b-2 border-white pb-0.5">For You</span>
+                </div>
+                {/* Right sidebar */}
+                <div className="absolute right-3 bottom-20 flex flex-col items-center gap-5">
+                  <div className="flex flex-col items-center">
+                    <div className="w-10 h-10 rounded-full border-2 border-white overflow-hidden">
+                      <div className="w-full h-full bg-gradient-to-br from-pink-400 to-purple-500" />
+                    </div>
+                    <div className="w-5 h-5 rounded-full bg-[#FE2C55] flex items-center justify-center -mt-2.5 border-2 border-black">
+                      <span className="text-white text-[10px] font-bold">+</span>
+                    </div>
+                  </div>
+                  {[["❤️","47.2K"],["💬","1,284"],["🔖","8,391"],["↗️","Share"]].map(([icon, label]) => (
+                    <div key={label} className="flex flex-col items-center gap-0.5">
+                      <span className="text-2xl">{icon}</span>
+                      <span className="text-white text-[10px]">{label}</span>
+                    </div>
+                  ))}
+                </div>
+                {/* Bottom info */}
+                <div className="absolute bottom-4 left-3 right-16">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <span className="text-white text-[13px] font-semibold">@{(brandName || "yourbrand").toLowerCase().replace(/\s/g, "_")}</span>
+                    <span className="px-1.5 py-0.5 bg-[#FE2C55]/90 text-white text-[9px] font-semibold rounded">Sponsored</span>
+                  </div>
+                  {headline && <p className="text-white/90 text-[12px] leading-snug line-clamp-2">{headline}</p>}
+                  {cta && (
+                    <button className="mt-2 px-4 py-1.5 bg-[#FE2C55] text-white text-[12px] font-semibold rounded-full">
+                      {cta}
+                    </button>
+                  )}
+                  <div className="flex items-center gap-1.5 mt-2">
+                    <span className="text-white/70 text-[11px]">♫</span>
+                    <p className="text-white/70 text-[10px] truncate">Original Sound · {brandName || "Your Brand"}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Publish CTA */}
+        <div className="px-4 py-3 bg-[#f5f0e8] border-t border-[#e8e2da]">
+          <button className="w-full py-4 bg-gradient-to-r from-[#9B7EC8] to-[#8A6DB8] text-white font-semibold rounded-xl shadow-lg shadow-[#9B7EC8]/30 active:scale-[0.98] transition-transform flex items-center justify-center gap-2">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <span>Publish to {platformLabels[previewPlatform]}</span>
+          </button>
         </div>
       </div>
     )

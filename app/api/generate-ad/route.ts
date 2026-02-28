@@ -133,6 +133,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Fail fast with clear messages if keys are missing
+    if (!process.env.FAL_KEY) {
+      return NextResponse.json({ error: "FAL_KEY environment variable is not set" }, { status: 500 })
+    }
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return NextResponse.json({ error: "ANTHROPIC_API_KEY environment variable is not set" }, { status: 500 })
+    }
+    if (!process.env.OPENAI_API_KEY) {
+      return NextResponse.json({ error: "OPENAI_API_KEY environment variable is not set" }, { status: 500 })
+    }
+
     const parseResult = await parseRequestBody(request, adGenerationSchema, 50000)
     if (!parseResult.success) {
       return NextResponse.json({ error: parseResult.error }, { status: 400 })
@@ -159,9 +170,8 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // fal.subscribe returns { data: Output, requestId }
-    const output = (result as { data?: { images?: { url: string }[] } }).data
-    const imageUrl = output?.images?.[0]?.url
+    // fal.subscribe returns the raw JSON body directly (no wrapper)
+    const imageUrl = (result as { images?: { url: string }[] }).images?.[0]?.url
 
     if (!imageUrl) {
       throw new Error("No image generated")
