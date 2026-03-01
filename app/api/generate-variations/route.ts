@@ -90,19 +90,22 @@ export async function POST(request: NextRequest) {
       // Add variation seed for diversity
       const promptWithVariation = `${variationPrompt}, variation ${index + 1}, unique interpretation`
       
-      const result = await fal.subscribe("fal-ai/flux/schnell", {
-        input: {
-          prompt: promptWithVariation,
-          image_size: "square_hd",
-          num_inference_steps: 4,
-          num_images: 1,
-          seed: Date.now() + index * 1000, // Different seed for each variation
-        },
-      })
-      
-      // fal.subscribe returns the raw JSON body directly (no wrapper)
-      const imageUrl = (result as { images?: { url: string }[] }).images?.[0]?.url
-      
+      // TODO: re-enable fal when ready for image generation
+      // const result = await fal.subscribe("fal-ai/flux/schnell", {
+      //   input: {
+      //     prompt: promptWithVariation,
+      //     image_size: "square_hd",
+      //     num_inference_steps: 4,
+      //     num_images: 1,
+      //     seed: Date.now() + index * 1000,
+      //   },
+      // })
+      // const imageUrl = (result as { images?: { url: string }[] }).images?.[0]?.url
+
+      // Stub: placeholder until fal is reconnected
+      const colors = ["9B7EC8", "7B5EA8", "C4A8E8", "8A6DB8"]
+      const imageUrl = `https://placehold.co/1024x1024/${colors[index % colors.length]}/ffffff?text=Variation+${index + 1}`
+
       if (imageUrl) {
         return {
           id: `var_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`,

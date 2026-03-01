@@ -132,9 +132,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Fail fast with clear messages if keys are missing
-    if (!process.env.FAL_KEY) {
-      return NextResponse.json({ error: "FAL_KEY environment variable is not set" }, { status: 500 })
-    }
+    // FAL_KEY check skipped — fal is stubbed out until video/image generation is re-enabled
     if (!process.env.ANTHROPIC_API_KEY) {
       return NextResponse.json({ error: "ANTHROPIC_API_KEY environment variable is not set" }, { status: 500 })
     }
@@ -143,7 +141,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Initialize clients here, after env-var guards, to avoid build-time errors
-    fal.config({ credentials: process.env.FAL_KEY })
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
@@ -161,24 +158,23 @@ export async function POST(request: NextRequest) {
     const finalPrompt = await refineWithOpenAI(body, claudePrompt, openai)
 
     // Step 3: FLUX.1 Dev — photorealistic image generation
-    const imageSize = getImageSize(body.platform, body.format)
-    const result = await fal.subscribe("fal-ai/flux/dev", {
-      input: {
-        prompt: finalPrompt,
-        image_size: imageSize,
-        num_inference_steps: 28,
-        guidance_scale: 3.5,
-        num_images: 1,
-        enable_safety_checker: true,
-      },
-    })
+    // TODO: re-enable fal when ready for video/image generation
+    // const imageSize = getImageSize(body.platform, body.format)
+    // const result = await fal.subscribe("fal-ai/flux/dev", {
+    //   input: {
+    //     prompt: finalPrompt,
+    //     image_size: imageSize,
+    //     num_inference_steps: 28,
+    //     guidance_scale: 3.5,
+    //     num_images: 1,
+    //     enable_safety_checker: true,
+    //   },
+    // })
+    // const imageUrl = (result as { images?: { url: string }[] }).images?.[0]?.url
+    // if (!imageUrl) throw new Error("No image generated")
 
-    // fal.subscribe returns the raw JSON body directly (no wrapper)
-    const imageUrl = (result as { images?: { url: string }[] }).images?.[0]?.url
-
-    if (!imageUrl) {
-      throw new Error("No image generated")
-    }
+    // Stub: return the refined prompt as a placeholder until fal is reconnected
+    const imageUrl = `https://placehold.co/1024x1024/9B7EC8/ffffff?text=${encodeURIComponent(body.headline || body.prompt).slice(0, 60)}`
 
     const generatedAd: GeneratedAd = {
       id: `ad_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
