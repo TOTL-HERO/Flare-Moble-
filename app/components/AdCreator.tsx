@@ -6,7 +6,7 @@
  * Uses Tailwind, Framer Motion, and Lucide exactly as the rest of the app does.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, RotateCcw, Zap, Send } from 'lucide-react';
 import {
@@ -28,12 +28,49 @@ const fadeIn = {
 
 const STEP_LABELS = ['Business', 'Platform', 'Format', 'Style', 'Create'];
 
-export default function AdCreator() {
+/** Parse the free-text prompt to detect industry and platform hints */
+function parsePrompt(prompt: string): { industry: string | null; platform: string | null; brandName: string } {
+  const p = prompt.toLowerCase();
+  const industryMap: [string, string[]][] = [
+    ['plumbing',    ['plumb', 'pipe', 'drain', 'leak', 'water heater', 'faucet']],
+    ['hvac',        ['hvac', 'ac ', 'air condition', 'furnace', 'heating', 'cooling', 'heat pump']],
+    ['roofing',     ['roof', 'shingle', 'gutter', 'storm damage']],
+    ['electrical',  ['electr', 'wiring', 'panel', 'breaker', 'outlet', 'ev charger']],
+    ['landscaping', ['landscap', 'lawn', 'mow', 'irrigation', 'garden', 'mulch', 'trim']],
+    ['pest',        ['pest', 'termite', 'rodent', 'bug ', 'insect', 'exterminate']],
+  ];
+  const platformMap: [string, string[]][] = [
+    ['facebook',  ['facebook', 'fb ad']],
+    ['instagram', ['instagram', 'ig ', 'insta']],
+    ['google',    ['google']],
+    ['nextdoor',  ['nextdoor', 'next door']],
+  ];
+
+  let detectedIndustry: string | null = null;
+  for (const [key, keywords] of industryMap) {
+    if (keywords.some(k => p.includes(k))) { detectedIndustry = key; break; }
+  }
+  let detectedPlatform: string | null = null;
+  for (const [key, keywords] of platformMap) {
+    if (keywords.some(k => p.includes(k))) { detectedPlatform = key; break; }
+  }
+
+  // Simple brand extraction: "for [Name]" or "my [Name] business"
+  const forMatch = prompt.match(/\bfor\s+([A-Z][a-zA-Z'&\s]{1,24}?)(?:\s+(?:business|company|llc|inc|co\b|plumbing|hvac|roofing|electrical|landscaping|pest)|[,.]|$)/);
+  const myMatch  = prompt.match(/\bmy\s+([A-Z][a-zA-Z'&\s]{1,24}?)\s+(?:business|company|llc|inc|co\b)/i);
+  const brandName = (forMatch?.[1] || myMatch?.[1] || '').trim();
+
+  return { industry: detectedIndustry, platform: detectedPlatform, brandName };
+}
+
+export default function AdCreator({ initialPrompt = '', onBack }: { initialPrompt?: string; onBack?: () => void }) {
+  const parsed = useMemo(() => parsePrompt(initialPrompt), [initialPrompt]);
+
   const [step, setStep]               = useState(0);
-  const [industry, setIndustry]       = useState<string | null>(null);
-  const [brandName, setBrandName]     = useState('');
+  const [industry, setIndustry]       = useState<string | null>(parsed.industry);
+  const [brandName, setBrandName]     = useState(parsed.brandName);
   const [offer, setOffer]             = useState('');
-  const [platform, setPlatform]       = useState<string | null>(null);
+  const [platform, setPlatform]       = useState<string | null>(parsed.platform);
   const [format, setFormat]           = useState('square');
   const [style, setStyle]             = useState<string | null>(null);
   const [copy, setCopy]               = useState<AdCopy | null>(null);
@@ -105,9 +142,16 @@ export default function AdCreator() {
         {/* Header */}
         <div className="px-6 pt-4 pb-3 border-b border-zinc-100">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-violet-400 flex items-center justify-center flex-shrink-0">
-              <Zap size={14} className="text-white" />
-            </div>
+            {onBack && (
+              <button onClick={onBack} className="w-8 h-8 rounded-full flex items-center justify-center text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors flex-shrink-0">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M12 19l-7-7 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </button>
+            )}
+            {!onBack && (
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-violet-400 flex items-center justify-center flex-shrink-0">
+                <Zap size={14} className="text-white" />
+              </div>
+            )}
             <div>
               <p className="font-extrabold text-sm text-zinc-900 tracking-tight leading-none">Flare</p>
               <p className="text-[10px] text-zinc-400 font-semibold tracking-widest mt-0.5">AI AD CREATOR</p>
@@ -120,6 +164,12 @@ export default function AdCreator() {
               ))}
             </div>
           </div>
+          {initialPrompt && (
+            <div className="mb-3 px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-lg flex items-start gap-2">
+              <span className="text-[10px] text-zinc-400 font-bold tracking-wider uppercase mt-0.5 flex-shrink-0">Prompt</span>
+              <p className="text-[11px] text-zinc-600 leading-relaxed line-clamp-2">{initialPrompt}</p>
+            </div>
+          )}
           <div className="flex gap-1.5">
             {STEP_LABELS.map((name, i) => (
               <button key={i} className="flex-1 text-left" onClick={() => i < step && setStep(i)} disabled={i >= step}>
@@ -158,6 +208,7 @@ export default function AdCreator() {
                   {industry && brandName.length > 1 && (
                     <motion.div {...fadeIn} className="mt-3 px-3 py-2 bg-violet-50 border border-violet-200 rounded-lg text-xs text-violet-700 font-medium leading-relaxed">
                       <strong>{ind.badge} {ind.label} mode on</strong> — copy will reference {ind.keywords[0]}, {ind.keywords[1]}, and {ind.keywords[2]}
+                      {parsed.industry === industry && <span className="ml-1 text-violet-400">(detected from your prompt)</span>}
                     </motion.div>
                   )}
                 </div>

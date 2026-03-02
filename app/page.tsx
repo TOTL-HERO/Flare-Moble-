@@ -727,7 +727,6 @@ function BottomTabBar({ activeTab, onTabChange, darkMode = false }: { activeTab:
     { id: "campaigns", labelKey: "campaigns" as const, icon: Target },
     { id: "create", labelKey: "create" as const, icon: Plus, primary: true },
     { id: "analytics", labelKey: "analytics" as const, icon: BarChart3 },
-    { id: "ad-creator", labelKey: "adCreator" as const, icon: Zap },
     { id: "settings", labelKey: "settings" as const, icon: Settings },
   ]
 
@@ -918,7 +917,7 @@ function CreateView({ darkMode = false }: { darkMode?: boolean }) {
   const greeting = getGreeting()
   
   // AI Generation states
-  const [step, setStep] = useState<"prompt" | "options" | "generating" | "result" | "preview">("prompt")
+  const [step, setStep] = useState<"prompt" | "wizard" | "options" | "generating" | "result" | "preview">("prompt")
   const [selectedPlatform, setSelectedPlatform] = useState<UIAdPlatform>("instagram")
   const [selectedFormat, setSelectedFormat] = useState<UIAdFormat>("square")
   const [selectedStyle, setSelectedStyle] = useState<UIAdStyle>("professional")
@@ -971,7 +970,7 @@ function CreateView({ darkMode = false }: { darkMode?: boolean }) {
 
   const handleSubmitPrompt = () => {
     if (inputValue.trim()) {
-      setStep("options")
+      setStep("wizard")
     }
   }
 
@@ -1052,6 +1051,7 @@ function CreateView({ darkMode = false }: { darkMode?: boolean }) {
     setHeadline("")
     setCta("")
     setBrandName("")
+    setGenerationError(null)
   }
 
   const handleOpenPreview = (platform: UIAdPlatform) => {
@@ -1081,6 +1081,15 @@ function CreateView({ darkMode = false }: { darkMode?: boolean }) {
     { id: "professional", name: "Professional", desc: "Business-ready" },
     { id: "vintage", name: "Vintage", desc: "Retro vibes" },
   ]
+
+  // Render Ad Creator wizard (triggered from prompt)
+  if (step === "wizard") {
+    return (
+      <div className="h-[calc(100vh-8rem)] overflow-hidden">
+        <AdCreator initialPrompt={inputValue} onBack={() => setStep("prompt")} />
+      </div>
+    )
+  }
 
   // Render generating state
   if (step === "generating") {
@@ -3642,8 +3651,6 @@ export default function FlareApp() {
         return <CreateView darkMode={darkMode} />
       case "analytics":
         return <AnalyticsView darkMode={darkMode} />
-      case "ad-creator":
-        return <AdCreator />
       case "settings":
         return <SettingsView darkMode={darkMode} onDarkModeChange={setDarkMode} onLogout={handleLogout} />
       default:
@@ -3656,7 +3663,6 @@ export default function FlareApp() {
     campaigns: "campaigns",
     create: "create",
     analytics: "analytics",
-    "ad-creator": "adCreator",
     settings: "settings"
   }
 
