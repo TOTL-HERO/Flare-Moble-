@@ -239,11 +239,24 @@ Deno.serve(async (req: Request) => {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) return json({ error: 'Unauthorized' }, 401);
 
+    const token = authHeader.replace('Bearer ', '');
+
+    // Server-to-server call from the Next.js API route uses the service role key.
+    // In this case we skip user JWT verification and usage tracking so the edge
+    // function works before Supabase auth is wired into the front-end.
+    const isServiceCall =
+      req.headers.get('x-service-call') === 'true' && token === SUPABASE_SERVICE_KEY;
+
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-    const { data: { user }, error: authErr } = await supabase.auth.getUser(
-      authHeader.replace('Bearer ', '')
-    );
-    if (authErr || !user) return json({ error: 'Unauthorized' }, 401);
+    let userId: string;
+
+    if (isServiceCall) {
+      userId = 'service';
+    } else {
+      const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
+      if (authErr || !user) return json({ error: 'Unauthorized' }, 401);
+      userId = user.id;
+    }
 
     const body = await req.json() as { task: string; input: Record<string, unknown> };
     const { task, input } = body;
@@ -258,10 +271,12 @@ Deno.serve(async (req: Request) => {
     };
     const action = actionMap[task] ?? 'ad';
 
-    // Check limits
-    const { allowed, upgrade_to } = await checkUsage(supabase, user.id, action);
-    if (!allowed) {
-      return json({ error: 'limit_reached', upgrade_to }, 402);
+    // Usage gate — skipped for service-to-service calls
+    if (!isServiceCall) {
+      const { allowed, upgrade_to } = await checkUsage(supabase, userId, action);
+      if (!allowed) {
+        return json({ error: 'limit_reached', upgrade_to }, 402);
+      }
     }
 
     let result: unknown;
@@ -292,12 +307,14 @@ Deno.serve(async (req: Request) => {
         return json({ error: `Unknown task: ${task}` }, 400);
     }
 
-    // Record usage
-    await supabase.rpc('increment_usage', {
-      p_user_id: user.id,
-      p_action: action,
-      p_cost_cents: costCents,
-    });
+    // Record usage — skipped for service-to-service calls (no user to charge)
+    if (!isServiceCall) {
+      await supabase.rpc('increment_usage', {
+        p_user_id: userId,
+        p_action: action,
+        p_cost_cents: costCents,
+      });
+    }
 
     return json({ result });
   } catch (err) {

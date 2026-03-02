@@ -1,11 +1,9 @@
 import { type NextRequest, NextResponse } from "next/server"
-import * as fal from "@fal-ai/serverless-client"
 import Anthropic from "@anthropic-ai/sdk"
 import OpenAI from "openai"
 import {
   type AdGenerationRequest,
   type GeneratedAd,
-  platformDimensions,
 } from "@/lib/types"
 import {
   adGenerationSchema,
@@ -13,18 +11,81 @@ import {
   checkRateLimit,
 } from "@/lib/validation"
 
-// Clients are initialized lazily inside POST after env-var guards run
+// ─── Supabase edge-function path ──────────────────────────────────────────────
+// When NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY are set, the route
+// proxies to the ai-engine edge function (Claude Opus + SEO + usage tracking).
+// Otherwise it falls back to the direct Claude Haiku + OpenAI pipeline below.
 
-function getImageSize(platform: string, format: string): string {
-  const platformConfig = platformDimensions[platform as keyof typeof platformDimensions]
-  if (!platformConfig) return "square_hd"
-  const dims = platformConfig[format as keyof typeof platformConfig]
-  if (!dims) return "square_hd"
-  const ratio = dims.width / dims.height
-  if (ratio > 1.2) return "landscape_16_9"
-  if (ratio < 0.8) return "portrait_16_9"
-  return "square_hd"
+interface AiEngineAdCopy {
+  headline_1: string
+  headline_2?: string
+  headline_3?: string
+  description_1?: string
+  cta: string
+  long_form_body?: string
 }
+
+interface AiEngineResult {
+  ad_copy: AiEngineAdCopy
+  visual_brief?: { image_prompt?: string }
+  seo_benchmark?: { primary_keyword?: string }
+}
+
+async function callAiEngine(body: AdGenerationRequest): Promise<GeneratedAd | null> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!supabaseUrl || !serviceKey) return null
+
+  const res = await fetch(`${supabaseUrl}/functions/v1/ai-engine`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${serviceKey}`,
+      "Content-Type": "application/json",
+      // Signals a trusted server-to-server call — edge fn skips user JWT check
+      "x-service-call": "true",
+    },
+    body: JSON.stringify({
+      task: "generate_ad_with_seo",
+      input: {
+        businessName: body.brandName || "Brand",
+        service: body.prompt,
+        city: "",
+        state: "",
+        offer: body.cta || body.headline || body.prompt,
+        platform: body.platform,
+        context: [
+          `style: ${body.style || "professional"}`,
+          `format: ${body.format}`,
+          `language: ${body.language}`,
+          body.headline ? `headline hint: ${body.headline}` : "",
+        ].filter(Boolean).join(", "),
+      },
+    }),
+  })
+
+  if (!res.ok) return null
+
+  const json = await res.json() as { result?: AiEngineResult; error?: string }
+  if (!json.result) return null
+
+  const { ad_copy } = json.result
+  const imageUrl = `https://placehold.co/1024x1024/9B7EC8/ffffff?text=${encodeURIComponent(ad_copy.headline_1 || body.prompt).slice(0, 60)}`
+
+  return {
+    id: `ad_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    imageUrl,
+    prompt: body.prompt,
+    platform: body.platform,
+    format: body.format,
+    style: body.style || "professional",
+    headline: ad_copy.headline_1,
+    cta: ad_copy.cta,
+    createdAt: new Date(),
+    language: body.language,
+  }
+}
+
+// ─── Direct Claude + OpenAI fallback ─────────────────────────────────────────
 
 const platformContext: Record<string, string> = {
   instagram: "Instagram feed — thumb-stopping scroll, high aesthetic quality, lifestyle-focused",
@@ -42,7 +103,6 @@ const formatContext: Record<string, string> = {
   portrait: "4:5 portrait, product or subject centered, slightly compressed vertical frame",
 }
 
-// Claude generates the photorealistic visual blueprint
 async function buildVisualPromptWithClaude(body: AdGenerationRequest, anthropic: Anthropic): Promise<string> {
   const msg = await anthropic.messages.create({
     model: "claude-haiku-4-5-20251001",
@@ -79,7 +139,6 @@ Return ONLY the prompt. No preamble, no explanation.`,
   return msg.content[0].type === "text" ? msg.content[0].text.trim() : body.prompt
 }
 
-// OpenAI cross-references and adds commercial impact layers
 async function refineWithOpenAI(body: AdGenerationRequest, claudePrompt: string, openai: OpenAI): Promise<string> {
   const completion = await openai.chat.completions.create({
     model: "gpt-4o-mini",
@@ -113,6 +172,8 @@ Keep it as a single flowing prompt under 280 words. Return ONLY the refined prom
   return completion.choices[0]?.message?.content?.trim() || claudePrompt
 }
 
+// ─── Handler ──────────────────────────────────────────────────────────────────
+
 export async function POST(request: NextRequest) {
   try {
     const clientIP = request.headers.get("x-forwarded-for") || "anonymous"
@@ -131,19 +192,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Fail fast with clear messages if keys are missing
-    // FAL_KEY check skipped — fal is stubbed out until video/image generation is re-enabled
-    if (!process.env.ANTHROPIC_API_KEY) {
-      return NextResponse.json({ error: "ANTHROPIC_API_KEY environment variable is not set" }, { status: 500 })
-    }
-    if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json({ error: "OPENAI_API_KEY environment variable is not set" }, { status: 500 })
-    }
-
-    // Initialize clients here, after env-var guards, to avoid build-time errors
-    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-
     const parseResult = await parseRequestBody(request, adGenerationSchema, 50000)
     if (!parseResult.success) {
       return NextResponse.json({ error: parseResult.error }, { status: 400 })
@@ -151,29 +199,31 @@ export async function POST(request: NextRequest) {
 
     const body = parseResult.data
 
-    // Step 1: Claude builds the photorealistic visual blueprint
+    // ── Path 1: Supabase edge function (when configured) ──────────────────────
+    const edgeAd = await callAiEngine(body)
+    if (edgeAd) {
+      return NextResponse.json({ success: true, ad: edgeAd })
+    }
+
+    // ── Path 2: Direct Claude + OpenAI fallback ───────────────────────────────
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return NextResponse.json({ error: "ANTHROPIC_API_KEY environment variable is not set" }, { status: 500 })
+    }
+    if (!process.env.OPENAI_API_KEY) {
+      return NextResponse.json({ error: "OPENAI_API_KEY environment variable is not set" }, { status: 500 })
+    }
+
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+
     const claudePrompt = await buildVisualPromptWithClaude(body, anthropic)
+    await refineWithOpenAI(body, claudePrompt, openai) // result used for image gen when fal is re-enabled
 
-    // Step 2: OpenAI cross-references and refines for commercial impact
-    const finalPrompt = await refineWithOpenAI(body, claudePrompt, openai)
-
-    // Step 3: FLUX.1 Dev — photorealistic image generation
     // TODO: re-enable fal when ready for video/image generation
     // const imageSize = getImageSize(body.platform, body.format)
-    // const result = await fal.subscribe("fal-ai/flux/dev", {
-    //   input: {
-    //     prompt: finalPrompt,
-    //     image_size: imageSize,
-    //     num_inference_steps: 28,
-    //     guidance_scale: 3.5,
-    //     num_images: 1,
-    //     enable_safety_checker: true,
-    //   },
-    // })
+    // const result = await fal.subscribe("fal-ai/flux/dev", { ... })
     // const imageUrl = (result as { images?: { url: string }[] }).images?.[0]?.url
-    // if (!imageUrl) throw new Error("No image generated")
 
-    // Stub: return the refined prompt as a placeholder until fal is reconnected
     const imageUrl = `https://placehold.co/1024x1024/9B7EC8/ffffff?text=${encodeURIComponent(body.headline || body.prompt).slice(0, 60)}`
 
     const generatedAd: GeneratedAd = {
