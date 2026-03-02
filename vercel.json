@@ -1,0 +1,22 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "pnpm build",
+  "installCommand": "pnpm install",
+  "functions": {
+    "app/api/generate-ad/route.ts": {
+      "maxDuration": 120
+    },
+    "app/api/generate-variations/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/publish/route.ts": {
+      "maxDuration": 30
+    },
+    "app/api/campaigns/route.ts": {
+      "maxDuration": 15
+    },
+    "app/api/analytics/route.ts": {
+      "maxDuration": 15
+    }
+  }
+}
