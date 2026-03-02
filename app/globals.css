@@ -365,3 +365,104 @@ textarea {
   animation-duration: 200ms;
   animation-timing-function: ease-out;
 }
+
+/* ── Flare Theme System ─────────────────────────────────────────── */
+/* Applied via data-theme attribute on <html> by ThemeContext        */
+
+:root,
+[data-theme="light"] {
+  --flare-bg:           #f2efe9;
+  --flare-bg-hero:      linear-gradient(160deg, #ede8ff 0%, #f2efe9 55%);
+  --flare-surface:      #ffffff;
+  --flare-surface-up:   #f8f6ff;
+  --flare-border:       rgba(0, 0, 0, 0.07);
+  --flare-border-up:    rgba(124, 111, 205, 0.20);
+  --flare-text:         #111110;
+  --flare-text-sec:     #6b6762;
+  --flare-text-tert:    #a8a49f;
+  --flare-violet:       #7c6fcd;
+  --flare-violet-dim:   rgba(124, 111, 205, 0.09);
+  --flare-violet-glow:  rgba(124, 111, 205, 0.20);
+  --flare-green:        #16a34a;
+  --flare-green-dim:    #f0fdf4;
+  --flare-amber:        #d97706;
+  --flare-amber-dim:    rgba(217, 119, 6, 0.10);
+  --flare-red:          #dc2626;
+  --flare-red-dim:      #fef2f2;
+  --flare-nav-bg:       rgba(242, 239, 233, 0.92);
+  --flare-card-shadow:  0 2px 12px rgba(0, 0, 0, 0.06);
+  --flare-pill:         rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="dark"] {
+  --flare-bg:           #0f0e13;
+  --flare-bg-hero:      linear-gradient(160deg, #1a1630 0%, #0f0e13 60%);
+  --flare-surface:      #19171f;
+  --flare-surface-up:   #201e27;
+  --flare-border:       rgba(255, 255, 255, 0.07);
+  --flare-border-up:    rgba(255, 255, 255, 0.12);
+  --flare-text:         #f5f4f7;
+  --flare-text-sec:     #9b98a8;
+  --flare-text-tert:    #5c5a68;
+  --flare-violet:       #8b7cf8;
+  --flare-violet-dim:   rgba(139, 124, 248, 0.12);
+  --flare-violet-glow:  rgba(139, 124, 248, 0.25);
+  --flare-green:        #34d399;
+  --flare-green-dim:    rgba(52, 211, 153, 0.12);
+  --flare-amber:        #fbbf24;
+  --flare-amber-dim:    rgba(251, 191, 36, 0.12);
+  --flare-red:          #f87171;
+  --flare-red-dim:      rgba(248, 113, 113, 0.12);
+  --flare-nav-bg:       rgba(15, 14, 19, 0.90);
+  --flare-card-shadow:  none;
+  --flare-pill:         rgba(255, 255, 255, 0.08);
+}
+
+/* Smooth theme transitions — only on background/color, not layout */
+*, *::before, *::after {
+  transition-property: background-color, border-color, color, box-shadow;
+  transition-duration: 0.35s;
+  transition-timing-function: ease;
+}
+
+/* Staggered card reveals */
+.flare-stagger-1 { animation: flareCardReveal 0.4s 0.05s cubic-bezier(0.22,1,0.36,1) both; }
+.flare-stagger-2 { animation: flareCardReveal 0.4s 0.10s cubic-bezier(0.22,1,0.36,1) both; }
+.flare-stagger-3 { animation: flareCardReveal 0.4s 0.15s cubic-bezier(0.22,1,0.36,1) both; }
+.flare-stagger-4 { animation: flareCardReveal 0.4s 0.20s cubic-bezier(0.22,1,0.36,1) both; }
+.flare-stagger-5 { animation: flareCardReveal 0.4s 0.25s cubic-bezier(0.22,1,0.36,1) both; }
+.flare-stagger-6 { animation: flareCardReveal 0.4s 0.30s cubic-bezier(0.22,1,0.36,1) both; }
+
+@keyframes flareCardReveal {
+  from { opacity: 0; transform: translateY(14px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+
+/* Page enter */
+.flare-page-enter {
+  animation: flarePageEnter 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes flarePageEnter {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+/* Tap press — apply to interactive cards */
+.flare-tap {
+  transition: transform 0.14s ease, box-shadow 0.14s ease !important;
+  cursor: pointer;
+}
+.flare-tap:active {
+  transform: scale(0.97) !important;
+}
+
+/* Shimmer loading state */
+@keyframes flareShimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+.flare-shimmer {
+  background: linear-gradient(90deg, var(--flare-surface) 25%, var(--flare-surface-up) 50%, var(--flare-surface) 75%);
+  background-size: 200% 100%;
+  animation: flareShimmer 1.4s infinite;
+}

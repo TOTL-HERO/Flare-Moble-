@@ -2,11 +2,13 @@
 
 import React, { useState, useRef, createContext, useContext } from "react"
 import AdCreator from "./components/AdCreator"
-import { 
-  Sparkles, 
-  LayoutDashboard, 
-  Users, 
-  Settings, 
+import { CampaignCard } from "./components/CampaignCard"
+import { useTheme } from "./contexts/ThemeContext"
+import {
+  Sparkles,
+  LayoutDashboard,
+  Users,
+  Settings,
   TrendingUp,
   Plus,
   ArrowRight,
@@ -14,7 +16,10 @@ import {
   Zap,
   Target,
   BarChart3,
-  Bell
+  Bell,
+  Sun,
+  Moon,
+  List
 } from "lucide-react"
 
 // Language types and translations
@@ -1966,17 +1971,17 @@ function CarouselIcon({ active }: { active: boolean }) {
 }
 
 // Campaign header with title, view toggle, and filter tabs
-function CampaignHeader({ 
-  activeFilter, 
+function CampaignHeader({
+  activeFilter,
   onFilterChange,
   viewMode,
   onViewModeChange,
   totalAds
-}: { 
+}: {
   activeFilter: string
   onFilterChange: (filter: string) => void
-  viewMode: "carousel" | "grid"
-  onViewModeChange: (mode: "carousel" | "grid") => void
+  viewMode: "carousel" | "grid" | "list"
+  onViewModeChange: (mode: "carousel" | "grid" | "list") => void
   totalAds: number
 }) {
   const filters = [
@@ -2012,6 +2017,15 @@ function CampaignHeader({
             aria-label="Grid view"
           >
             <GridIcon active={viewMode === "grid"} />
+          </button>
+          <button
+            onClick={() => onViewModeChange("list")}
+            className={`p-2 rounded-lg transition-all duration-200 ${
+              viewMode === "list" ? "bg-[#9B7EC8]/10" : "hover:bg-[#f5f0e8]"
+            }`}
+            aria-label="List view"
+          >
+            <List size={16} color={viewMode === "list" ? "#9B7EC8" : "#9C8D84"} />
           </button>
         </div>
       </div>
@@ -2500,7 +2514,7 @@ function UploadModal({
 
 function CampaignsView({ onNavigateToCreate, darkMode = false }: { onNavigateToCreate: () => void; darkMode?: boolean }) {
   const [filter, setFilter] = useState("all")
-  const [viewMode, setViewMode] = useState<"carousel" | "grid">("carousel")
+  const [viewMode, setViewMode] = useState<"carousel" | "grid" | "list">("carousel")
   const [currentIndex, setCurrentIndex] = useState(0)
   const [touchStart, setTouchStart] = useState<number | null>(null)
   const [touchEnd, setTouchEnd] = useState<number | null>(null)
@@ -2653,11 +2667,17 @@ function CampaignsView({ onNavigateToCreate, darkMode = false }: { onNavigateToC
     }
   }
 
+  // Adapter: convert mock ad fields to CampaignCard props
+  const parseImpressions = (s: string) => {
+    const n = parseFloat(s.replace(/[^0-9.]/g, ''))
+    return s.includes('K') ? Math.round(n * 1000) : isNaN(n) ? 0 : n
+  }
+
   return (
-    <div className="space-y-4 animate-in fade-in duration-300">
+    <div className="space-y-4 animate-in fade-in duration-300 flare-page-enter">
       {/* Header with title, view toggle, and filters */}
-      <CampaignHeader 
-        activeFilter={filter} 
+      <CampaignHeader
+        activeFilter={filter}
         onFilterChange={handleFilterChange}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
@@ -2686,7 +2706,30 @@ function CampaignsView({ onNavigateToCreate, darkMode = false }: { onNavigateToC
 
       {/* Content area with view transition */}
       <div className={`transition-all duration-500 ${viewMode === "carousel" ? "opacity-100" : "opacity-100"}`}>
-        {viewMode === "carousel" ? (
+        {viewMode === "list" ? (
+          /* List view — rich CampaignCard with micro ad preview */
+          <div className="space-y-0">
+            {filteredAds.map((ad, index) => (
+              <div key={ad.id} className={`flare-stagger-${Math.min(index + 1, 6) as 1|2|3|4|5|6}`}>
+                <CampaignCard campaign={{
+                  id:            ad.id,
+                  name:          ad.name,
+                  status:        ad.status,
+                  channel:       ad.platform,
+                  leads:         parseInt(ad.conversions) || 0,
+                  cost_per_lead: parseInt(ad.spend.replace(/[$,]/g, '')) / (parseInt(ad.conversions) || 1),
+                  budget:        parseInt(ad.spend.replace(/[$,]/g, '')) * 2 || 500,
+                  creative_url:  ad.imageUrl,
+                  headline:      ad.headline,
+                  cta_text:      ad.cta,
+                  impressions:   parseImpressions(ad.impressions),
+                  clicks:        parseInt(ad.clicks) || undefined,
+                  ctr:           ad.ctr,
+                }} />
+              </div>
+            ))}
+          </div>
+        ) : viewMode === "carousel" ? (
           <>
             {/* Carousel view */}
             <div 
@@ -3613,6 +3656,7 @@ function WelcomeScreen({ onLogin }: { onLogin: () => void }) {
 export default function FlareApp() {
   const [activeTab, setActiveTab] = useState("home")
   const [darkMode, setDarkMode] = useState(false)
+  const { isDark, toggleTheme } = useTheme()
   const [isLoggedIn, setIsLoggedIn] = useState(true)
   const [language, setLanguage] = useState<Language>("en")
   const [adLanguage, setAdLanguage] = useState<Language>("en")
@@ -3668,7 +3712,7 @@ export default function FlareApp() {
 
   return (
     <LanguageContext.Provider value={languageValue}>
-      <div className={`min-h-screen transition-colors duration-300 ${darkMode ? "bg-[#1a1a1a]" : "bg-[#f5f0e8]"}`}>
+      <div className={`min-h-screen transition-colors duration-300 ${darkMode ? "bg-[#1a1a1a]" : "bg-[#f5f0e8]"}`} style={{ background: 'var(--flare-bg)' }}>
         {/* Header */}
         <header className={`sticky top-0 z-40 backdrop-blur-sm border-b pt-safe transition-colors duration-300 ${
           darkMode 
@@ -3680,13 +3724,28 @@ export default function FlareApp() {
             <h1 className={`text-lg font-bold transition-colors duration-300 ${darkMode ? "text-white" : "text-[#2C2420]"}`}>
               {t(tabLabels[activeTab] || "home")}
             </h1>
-            <button className={`w-10 h-10 rounded-full border flex items-center justify-center active:scale-95 transition-all duration-300 ${
-              darkMode 
-                ? "bg-[#2a2a2a] border-[#3a3a3a]" 
-                : "bg-white border-[#e8e2da]"
-            }`}>
-              <Bell size={20} className={darkMode ? "text-[#a0a0a0]" : "text-[#6B5D54]"} />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={toggleTheme}
+                style={{
+                  width: 36, height: 36, borderRadius: 10,
+                  background: 'var(--flare-violet-dim)',
+                  border: '1px solid var(--flare-border)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: 'var(--flare-violet)', cursor: 'pointer',
+                }}
+                aria-label="Toggle theme"
+              >
+                {isDark ? <Sun size={16} /> : <Moon size={16} />}
+              </button>
+              <button className={`w-10 h-10 rounded-full border flex items-center justify-center active:scale-95 transition-all duration-300 ${
+                darkMode
+                  ? "bg-[#2a2a2a] border-[#3a3a3a]"
+                  : "bg-white border-[#e8e2da]"
+              }`}>
+                <Bell size={20} className={darkMode ? "text-[#a0a0a0]" : "text-[#6B5D54]"} />
+              </button>
+            </div>
           </div>
         </header>
 
