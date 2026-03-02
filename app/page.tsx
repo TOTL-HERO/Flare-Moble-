@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useRef, createContext, useContext } from "react"
+import AdCreator from "./components/AdCreator"
 import { 
   Sparkles, 
   LayoutDashboard, 
@@ -128,6 +129,9 @@ const translations = {
     haveAccount: "I already have an account",
     termsAgree: "By continuing, you agree to our Terms of Service and Privacy Policy",
     
+    // Navigation — Ad Creator
+    adCreator: "Ad Creator",
+
     // Ad creation language
     adLanguage: "Ad Language",
     selectAdLanguage: "Select the language for your ad content",
@@ -240,6 +244,9 @@ const translations = {
     haveAccount: "Ya tengo una cuenta",
     termsAgree: "Al continuar, aceptas nuestros Términos de Servicio y Política de Privacidad",
     
+    // Navigation — Ad Creator
+    adCreator: "Crear Anuncio",
+
     // Ad creation language
     adLanguage: "Idioma del Anuncio",
     selectAdLanguage: "Selecciona el idioma para tu contenido publicitario",
@@ -336,6 +343,7 @@ const translations = {
     getStarted: "Commencer",
     haveAccount: "J'ai déjà un compte",
     termsAgree: "En continuant, vous acceptez nos Conditions d'Utilisation",
+    adCreator: "Créer Pub",
     adLanguage: "Langue de la Pub",
     selectAdLanguage: "Sélectionnez la langue du contenu",
   },
@@ -431,6 +439,7 @@ const translations = {
     getStarted: "Loslegen",
     haveAccount: "Ich habe bereits ein Konto",
     termsAgree: "Mit dem Fortfahren akzeptieren Sie unsere Nutzungsbedingungen",
+    adCreator: "Anzeige Erstellen",
     adLanguage: "Anzeigensprache",
     selectAdLanguage: "Sprache für Anzeigeninhalt wählen",
   },
@@ -526,6 +535,7 @@ const translations = {
     getStarted: "Começar",
     haveAccount: "Já tenho uma conta",
     termsAgree: "Ao continuar, você concorda com nossos Termos de Serviço",
+    adCreator: "Criar Anúncio",
     adLanguage: "Idioma do Anúncio",
     selectAdLanguage: "Selecione o idioma do conteúdo",
   }
@@ -717,6 +727,7 @@ function BottomTabBar({ activeTab, onTabChange, darkMode = false }: { activeTab:
     { id: "campaigns", labelKey: "campaigns" as const, icon: Target },
     { id: "create", labelKey: "create" as const, icon: Plus, primary: true },
     { id: "analytics", labelKey: "analytics" as const, icon: BarChart3 },
+    { id: "ad-creator", labelKey: "adCreator" as const, icon: Zap },
     { id: "settings", labelKey: "settings" as const, icon: Settings },
   ]
 
@@ -3631,6 +3642,8 @@ export default function FlareApp() {
         return <CreateView darkMode={darkMode} />
       case "analytics":
         return <AnalyticsView darkMode={darkMode} />
+      case "ad-creator":
+        return <AdCreator />
       case "settings":
         return <SettingsView darkMode={darkMode} onDarkModeChange={setDarkMode} onLogout={handleLogout} />
       default:
@@ -3643,6 +3656,7 @@ export default function FlareApp() {
     campaigns: "campaigns",
     create: "create",
     analytics: "analytics",
+    "ad-creator": "adCreator",
     settings: "settings"
   }
 
